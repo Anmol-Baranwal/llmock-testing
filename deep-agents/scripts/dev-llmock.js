@@ -2,7 +2,7 @@ import { LLMock } from "@copilotkit/llmock";
 
 const mock = new LLMock({ port: 5555 });
 
-// user sends message → agent plans with write_todos
+// user asks → plan todos
 mock.addFixture({
   match: {
     predicate: (req) => {
@@ -21,7 +21,7 @@ mock.addFixture({
             {
               id: "1",
               content: "Research quantum computing basics",
-              status: "pending",
+              status: "in_progress",
             },
             {
               id: "2",
@@ -40,7 +40,7 @@ mock.addFixture({
   },
 });
 
-// write_todos completed → agent writes final report
+// write_todos done → research basics
 mock.addFixture({
   match: {
     predicate: (req) => {
@@ -52,7 +52,158 @@ mock.addFixture({
         lastAsst?.tool_calls?.[0]?.function?.name ??
         lastAsst?.tool_calls?.[0]?.name ??
         "none";
-      return toolName === "write_todos";
+      return (
+        toolName === "write_todos" &&
+        msgs.filter((m) => m.role === "tool").length === 1
+      );
+    },
+  },
+  response: {
+    toolCalls: [
+      {
+        name: "research",
+        arguments: JSON.stringify({ query: "quantum computing basics" }),
+      },
+    ],
+  },
+});
+
+// research done → mark #1 complete, start #2
+mock.addFixture({
+  match: {
+    predicate: (req) => {
+      const msgs = req.messages ?? [];
+      const last = msgs.at(-1);
+      if (last?.role !== "tool") return false;
+      const lastAsst = [...msgs].reverse().find((m) => m.role === "assistant");
+      const toolName =
+        lastAsst?.tool_calls?.[0]?.function?.name ??
+        lastAsst?.tool_calls?.[0]?.name ??
+        "none";
+      return (
+        toolName === "research" &&
+        msgs.filter((m) => m.role === "tool").length === 2
+      );
+    },
+  },
+  response: {
+    toolCalls: [
+      {
+        name: "write_todos",
+        arguments: JSON.stringify({
+          todos: [
+            {
+              id: "1",
+              content: "Research quantum computing basics",
+              status: "completed",
+            },
+            {
+              id: "2",
+              content: "Investigate quantum hardware developments",
+              status: "in_progress",
+            },
+            {
+              id: "3",
+              content: "Compile and write final report",
+              status: "pending",
+            },
+          ],
+        }),
+      },
+    ],
+  },
+});
+
+// write_todos done → research hardware
+mock.addFixture({
+  match: {
+    predicate: (req) => {
+      const msgs = req.messages ?? [];
+      const last = msgs.at(-1);
+      if (last?.role !== "tool") return false;
+      const lastAsst = [...msgs].reverse().find((m) => m.role === "assistant");
+      const toolName =
+        lastAsst?.tool_calls?.[0]?.function?.name ??
+        lastAsst?.tool_calls?.[0]?.name ??
+        "none";
+      return (
+        toolName === "write_todos" &&
+        msgs.filter((m) => m.role === "tool").length === 3
+      );
+    },
+  },
+  response: {
+    toolCalls: [
+      {
+        name: "research",
+        arguments: JSON.stringify({ query: "quantum hardware developments" }),
+      },
+    ],
+  },
+});
+
+// research done → mark #2 complete, start #3
+mock.addFixture({
+  match: {
+    predicate: (req) => {
+      const msgs = req.messages ?? [];
+      const last = msgs.at(-1);
+      if (last?.role !== "tool") return false;
+      const lastAsst = [...msgs].reverse().find((m) => m.role === "assistant");
+      const toolName =
+        lastAsst?.tool_calls?.[0]?.function?.name ??
+        lastAsst?.tool_calls?.[0]?.name ??
+        "none";
+      return (
+        toolName === "research" &&
+        msgs.filter((m) => m.role === "tool").length === 4
+      );
+    },
+  },
+  response: {
+    toolCalls: [
+      {
+        name: "write_todos",
+        arguments: JSON.stringify({
+          todos: [
+            {
+              id: "1",
+              content: "Research quantum computing basics",
+              status: "completed",
+            },
+            {
+              id: "2",
+              content: "Investigate quantum hardware developments",
+              status: "completed",
+            },
+            {
+              id: "3",
+              content: "Compile and write final report",
+              status: "in_progress",
+            },
+          ],
+        }),
+      },
+    ],
+  },
+});
+
+// write_todos done → write final report
+mock.addFixture({
+  match: {
+    predicate: (req) => {
+      const msgs = req.messages ?? [];
+      const last = msgs.at(-1);
+      if (last?.role !== "tool") return false;
+      const lastAsst = [...msgs].reverse().find((m) => m.role === "assistant");
+      const toolName =
+        lastAsst?.tool_calls?.[0]?.function?.name ??
+        lastAsst?.tool_calls?.[0]?.name ??
+        "none";
+      return (
+        toolName === "write_todos" &&
+        msgs.filter((m) => m.role === "tool").length === 5
+      );
     },
   },
   response: {
@@ -62,14 +213,14 @@ mock.addFixture({
         arguments: JSON.stringify({
           file_path: "/reports/final_report.md",
           content:
-            "# Quantum Computing Report\n\nQuantum computing leverages qubits for exponential speedup.\n\n## Key Findings\n\n- Qubits enable superposition and entanglement\n- Key players: IBM, Google, IonQ\n\n## Conclusion\n\nQuantum computing will transform industries within the next decade.",
+            "# Quantum Computing Report\n\nQuantum computing leverages qubits for exponential speedup.\n\n## Key Findings\n\n- Qubits enable superposition and entanglement\n- Key players: IBM (Eagle 127-qubit), Google Sycamore, IonQ\n\n## Conclusion\n\nQuantum computing will transform industries within the next decade.",
         }),
       },
     ],
   },
 });
 
-// write_file completed → agent sends final message
+// write_file done → mark all complete
 mock.addFixture({
   match: {
     predicate: (req) => {
@@ -82,6 +233,52 @@ mock.addFixture({
         lastAsst?.tool_calls?.[0]?.name ??
         "none";
       return toolName === "write_file";
+    },
+  },
+  response: {
+    toolCalls: [
+      {
+        name: "write_todos",
+        arguments: JSON.stringify({
+          todos: [
+            {
+              id: "1",
+              content: "Research quantum computing basics",
+              status: "completed",
+            },
+            {
+              id: "2",
+              content: "Investigate quantum hardware developments",
+              status: "completed",
+            },
+            {
+              id: "3",
+              content: "Compile and write final report",
+              status: "completed",
+            },
+          ],
+        }),
+      },
+    ],
+  },
+});
+
+// final write_todos done → final message
+mock.addFixture({
+  match: {
+    predicate: (req) => {
+      const msgs = req.messages ?? [];
+      const last = msgs.at(-1);
+      if (last?.role !== "tool") return false;
+      const lastAsst = [...msgs].reverse().find((m) => m.role === "assistant");
+      const toolName =
+        lastAsst?.tool_calls?.[0]?.function?.name ??
+        lastAsst?.tool_calls?.[0]?.name ??
+        "none";
+      return (
+        toolName === "write_todos" &&
+        msgs.filter((m) => m.role === "tool").length === 7
+      );
     },
   },
   response: {
