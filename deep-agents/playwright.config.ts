@@ -6,8 +6,8 @@ export default defineConfig({
   globalTeardown: "./e2e/global-teardown.ts",
   webServer: [
     {
-      command:
-        "bash -c 'cd agent && uv run uvicorn main:app --host 0.0.0.0 --port 8123'",
+      command: "bash -c 'cd agent && uv run python main.py'",
+      cwd: "./agent",
       url: "http://localhost:8123/health",
       reuseExistingServer: true,
       timeout: 100000,
