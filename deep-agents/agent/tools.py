@@ -44,11 +44,15 @@ def _do_internet_search(query: str, max_results: int = 5) -> list[dict[str, Any]
         # Format results for agent consumption
         formatted_results = []
         for r in results.get("results", []):
-            formatted_results.append({
-                "url": r.get("url", ""),
-                "title": r.get("title", ""),
-                "content": (r.get("content") or "")[:3000],  # Truncate to 3000 chars
-            })
+            formatted_results.append(
+                {
+                    "url": r.get("url", ""),
+                    "title": r.get("title", ""),
+                    "content": (r.get("content") or "")[
+                        :3000
+                    ],  # Truncate to 3000 chars
+                }
+            )
 
         print(f"[TOOL] internet_search: found {len(formatted_results)} results")
         return formatted_results
@@ -126,6 +130,7 @@ def research(query: str) -> dict:
             model=model_name,
             temperature=0.7,
             api_key=os.environ.get("OPENAI_API_KEY"),
+            base_url=os.environ.get("OPENAI_BASE_URL"),
         )
 
         # System prompt for the internal researcher
@@ -146,11 +151,13 @@ Rules:
             # No middleware - this runs in isolated thread
         )
 
+        print(f"[DEBUG] internal LLM base_url={os.environ.get('OPENAI_BASE_URL')}")
+        print(f"[DEBUG] internal LLM api_key={os.environ.get('OPENAI_API_KEY')}")
         # Run in isolated thread context - no callback inheritance possible
-        result = research_agent.invoke({
-            "messages": [HumanMessage(content=query)]
-        })
+        result = research_agent.invoke({"messages": [HumanMessage(content=query)]})
 
+        print(f"[DEBUG] internal agent result: {result['messages'][-1].content[:200]}")
+        print(f"[DEBUG] search_results count: {len(search_results)}")
         summary = result["messages"][-1].content
 
         # Format sources for frontend
@@ -159,9 +166,10 @@ Rules:
                 "url": r["url"],
                 "title": r.get("title", ""),
                 "content": r.get("content", "")[:3000],  # Include content preview
-                "status": "found"
+                "status": "found",
             }
-            for r in search_results if "url" in r and not r.get("error")
+            for r in search_results
+            if "url" in r and not r.get("error")
         ]
 
         return {"summary": summary, "sources": sources}

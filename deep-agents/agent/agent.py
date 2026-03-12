@@ -70,7 +70,9 @@ def build_agent():
     llm = ChatOpenAI(
         model=model_name,
         temperature=0.7,
-        api_key=api_key,
+        # api_key=api_key,
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        base_url=os.environ.get("OPENAI_BASE_URL"),
     )
 
     # Main agent gets research tool plus built-in Deep Agents tools
